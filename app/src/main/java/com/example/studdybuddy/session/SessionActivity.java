@@ -2,8 +2,15 @@ package com.example.studdybuddy.session;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.view.View;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.studdybuddy.R;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The session activity represents the appearance and behavior of a productivity session in progress.
@@ -26,5 +33,14 @@ public class SessionActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.session_view);
+        final TextView timer = findViewById(R.id.timer);
+
+        TimerManager updater = new TimerManager(timer);
+
+        updater.startTimer();
+
     }
+
+    // create an onStop call which displays a notification containing the current timer value
 }
