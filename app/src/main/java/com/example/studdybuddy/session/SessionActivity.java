@@ -1,13 +1,19 @@
 package com.example.studdybuddy.session;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationChannelGroup;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.example.studdybuddy.R;
 
@@ -30,27 +36,66 @@ import com.example.studdybuddy.R;
 public class SessionActivity extends AppCompatActivity {
 
     private TimerManager updater;
-    private NotificationChannelGroup notificationChannel;
+    private NotificationChannel notificationChannel;
+
+    public static final String OLD_TIMER_VAL = "oldTimerVal";
+    public static final String NOTIF_CHANNEL_NAME = "StudyBuddySessions";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.session_view);
-        final TextView timer = findViewById(R.id.timer);
 
+        setContentView(R.layout.session_view);
+        TextView timer = findViewById(R.id.timer);
         updater = new TimerManager(timer);
 
+        Intent startContext = getIntent();
+        updater.setTimer(startContext.getIntExtra(OLD_TIMER_VAL, 0));
+        timer.setText(updater.getTimerValueAsString());
+
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            notificationChannel = new NotificationChannel(NOTIF_CHANNEL_NAME, NOTIF_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
+            NotificationManager notifMgr = (NotificationManager)this.getSystemService(NOTIFICATION_SERVICE);
+            assert notifMgr != null;
+            notifMgr.createNotificationChannel(notificationChannel);
+        }
+
         updater.startTimer();
-
-        notificationChannel = new NotificationChannelGroup();
-
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         String display = TimerManager.getTimeString(updater.getTimerValue());
-        NotificationManager notifMgr = (NotificationManager)getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notifMgr = (NotificationManager)getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
+        updater.stopTimer();
+
+        // note: this is depreciated since API26 -- since our minver is API24 it still works but :/
+        Notification.Builder builder;
+        if (android.os.Build.VERSION.SDK_INT < 26) {
+            builder = new Notification.Builder(getApplicationContext());
+        } else {
+            builder = new Notification.Builder(getApplicationContext(), NOTIF_CHANNEL_NAME);
+        }
+
+        builder.setContentTitle("world of grapes")
+                .setContentText("PAUSED AT " + TimerManager.getTimeString(updater.getTimerValue()))
+                .setSmallIcon(R.drawable.cattron_superscale)
+                .setAutoCancel(true);
+
+        Intent reopenSession = new Intent(this, SessionActivity.class);
+        reopenSession.putExtra(OLD_TIMER_VAL, updater.getTimerValue());
+
+        PendingIntent pendSession = PendingIntent.getActivity(this, 12, reopenSession, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        builder.setContentIntent(pendSession);
+
+        Log.e("heads up!", "stopped");
+
+        assert notifMgr != null;
+        notifMgr.notify(12, builder.build());
+
+
 
 
     }

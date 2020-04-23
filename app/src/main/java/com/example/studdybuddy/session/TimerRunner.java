@@ -21,7 +21,7 @@ public class TimerRunner implements Runnable {
 
     @Override
     public void run() {
-        int time = secondsPassed.getAndIncrement();
+        int time = secondsPassed.incrementAndGet();
         counter.setText(TimerManager.getTimeString(time));
         parent.postDelayed(this, 1000);
     }

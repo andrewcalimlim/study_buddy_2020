@@ -41,8 +41,16 @@ public class TimerManager {
         isTimerRunning = false;
     }
 
+    public void setTimer(int newValue) {
+        secondsPassed.set(newValue);
+    }
+
     public int getTimerValue() {
         return secondsPassed.get();
+    }
+
+    public String getTimerValueAsString() {
+        return getTimeString(secondsPassed.get());
     }
 
     public static String getTimeString(int time) {
