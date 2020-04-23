@@ -23,8 +23,10 @@
             android:label="SessionStart"
             android:theme="@style/AppTheme">
             <intent-filter>
+                <!-- this will produce a launcher icon for now
+                     but it should be pretty easy to retool such that it's triggered instead -->
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>
