@@ -21,49 +21,19 @@ public class TimerManager {
         this.secondsPassed = new AtomicInteger(0);
         this.updateManager = new Handler();
         this.timer = timeview;
+        runner = new TimerRunner(this.updateManager, this.secondsPassed, this.timer);
 
         this.isTimerRunning = false;
 
         // todo: make new class for this
         // todo: also give it a public function for parsing time :)
-        this.runner = new Runnable() {
-            public void run() {
-                StringBuilder builder = new StringBuilder();
-                int time = secondsPassed.getAndIncrement();
-                if (time < 36000) {
-                    builder.append(0);
-                }
-
-                builder.append(time / 3600);
-                builder.append(":");
-
-                time = time % 3600;
-
-                if (time < 600) {
-                    builder.append(0);
-                }
-
-                builder.append(time / 60);
-                builder.append(":");
-
-                time = time % 60;
-
-                if (time < 10) {
-                    builder.append(0);
-                }
-
-                builder.append(time);
-
-                timer.setText(builder.toString());
-
-                updateManager.postDelayed(runner, 1000);
-            }
-        };
     }
 
     public void startTimer() {
-        updateManager.postDelayed(runner,1000);
-        isTimerRunning = true;
+        if (!isTimerRunning) {
+            updateManager.postDelayed(runner,1000);
+            isTimerRunning = true;
+        }
     }
 
     public void stopTimer() {
@@ -73,5 +43,35 @@ public class TimerManager {
 
     public int getTimerValue() {
         return secondsPassed.get();
+    }
+
+    public static String getTimeString(int time) {
+
+        StringBuilder builder = new StringBuilder();
+        if (time < 36000) {
+            builder.append(0);
+        }
+
+        builder.append(time / 3600);
+        builder.append(":");
+
+        time = time % 3600;
+
+        if (time < 600) {
+            builder.append(0);
+        }
+
+        builder.append(time / 60);
+        builder.append(":");
+
+        time = time % 60;
+
+        if (time < 10) {
+            builder.append(0);
+        }
+
+        builder.append(time);
+
+        return builder.toString();
     }
 }

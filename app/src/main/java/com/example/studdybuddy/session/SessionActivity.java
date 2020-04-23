@@ -1,16 +1,15 @@
 package com.example.studdybuddy.session;
 
+import android.app.NotificationChannel;
+import android.app.NotificationChannelGroup;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.View;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.studdybuddy.R;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The session activity represents the appearance and behavior of a productivity session in progress.
@@ -30,15 +29,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class SessionActivity extends AppCompatActivity {
 
+    private TimerManager updater;
+    private NotificationChannelGroup notificationChannel;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.session_view);
         final TextView timer = findViewById(R.id.timer);
 
-        TimerManager updater = new TimerManager(timer);
+        updater = new TimerManager(timer);
 
         updater.startTimer();
+
+        notificationChannel = new NotificationChannelGroup();
+
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        String display = TimerManager.getTimeString(updater.getTimerValue());
+        NotificationManager notifMgr = (NotificationManager)getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+
 
     }
 
