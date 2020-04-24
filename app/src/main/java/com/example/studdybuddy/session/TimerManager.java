@@ -1,5 +1,6 @@
 package com.example.studdybuddy.session;
 
+import android.app.Activity;
 import android.os.Handler;
 import android.widget.TextView;
 
@@ -11,17 +12,23 @@ public class TimerManager {
 
     private boolean isTimerRunning;
 
-    private final TextView timer;
+    private TextView timer;
 
-    private final Runnable runner;
+    private final TimerRunner runner;
+
+    private long lastTimerValue;
+    private boolean isSleeping;
 
     public static final int MILLIS_DELAY = 1000;
 
-    public TimerManager(TextView timeview) {
+    public TimerManager(TextView timeview, Activity activity) {
         this.secondsPassed = new AtomicInteger(0);
         this.updateManager = new Handler();
         this.timer = timeview;
-        runner = new TimerRunner(this.updateManager, this.secondsPassed, this.timer);
+        this.isSleeping = false;
+        this.lastTimerValue = System.currentTimeMillis();
+
+        runner = new TimerRunner(this.updateManager, this.secondsPassed, this.timer, activity);
 
         this.isTimerRunning = false;
 
@@ -29,8 +36,18 @@ public class TimerManager {
         // todo: also give it a public function for parsing time :)
     }
 
+    public void changeTextView(TextView view) {
+        runner.changeTextView(view);
+    }
+
     public void startTimer() {
         if (!isTimerRunning) {
+            if (isSleeping) {
+                // restore value
+                int delta = (int)((System.currentTimeMillis() - lastTimerValue) / 1000);
+                secondsPassed.set(secondsPassed.get() + delta);
+                isSleeping = false;
+            }
             updateManager.postDelayed(runner,1000);
             isTimerRunning = true;
         }
@@ -39,6 +56,18 @@ public class TimerManager {
     public void stopTimer() {
         updateManager.removeCallbacks(runner);
         isTimerRunning = false;
+    }
+
+    public void sleepTimer() {
+        if (isTimerRunning) {
+            lastTimerValue = System.currentTimeMillis();
+            isSleeping = true;
+            stopTimer();
+        }
+    }
+
+    public boolean isTimerRunning() {
+        return isTimerRunning;
     }
 
     public void setTimer(int newValue) {

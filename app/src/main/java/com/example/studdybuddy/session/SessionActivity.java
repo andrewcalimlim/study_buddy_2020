@@ -2,21 +2,19 @@ package com.example.studdybuddy.session;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
-import android.app.NotificationChannelGroup;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.PersistableBundle;
+import android.os.PowerManager;
 import android.util.Log;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-
-import com.example.studdybuddy.BuildConfig;
-import com.example.studdybuddy.MainActivity;
 import com.example.studdybuddy.R;
 
 /**
@@ -41,6 +39,8 @@ public class SessionActivity extends AppCompatActivity {
     private NotificationChannel notificationChannel;
 
     public static final String OLD_TIMER_VAL = "oldTimerVal";
+    public static final String IS_TIMER_RUNNING = "isTimerRunning";
+    public static final String TIMER_STOP_TIME = "timerStopTime";
     public static final String NOTIF_CHANNEL_NAME = "StudyBuddySessions";
 
     public static final int TIMER_NOTIF_ID = 1;
@@ -51,101 +51,80 @@ public class SessionActivity extends AppCompatActivity {
 
         setContentView(R.layout.session_view);
         TextView timer = findViewById(R.id.timer);
-        updater = new TimerManager(timer);
-    }
+        updater = new TimerManager(timer, this);
 
-    // todo: the timer notifies us when the back button is pressed to end a session
-    //       only trigger when the app is left
-    //       add'l: account for when the phone is turned off
-    //       and add a broadcast manager which registers at this time
-    //       and fires if the phone is turned back on
-    //       and the app is not opened right away
-    //          - cheat it with a slight delay (a couple seconds)
-    //          - clear it if the app opens before then (onResume)
-    // ticking in the background
-    //    stop immediately for now when the app is left intentionally
-    //    if in the background, save the current time into the bundle
-    //    we can figure out how the app was closed via the power manager
-    //       - back button: do nothing (end the session)
-    //       - home button: notify
-    //       - power button: keep tracking
-    //          - save bundle
-    //          - flip a flag which onRestore can pick up on
-    //          - tell onRestore whether we're still in a session or not
-    //          - the user doesn't have to follow our receiver
-    //          - use the alarm + receiver to communicate a "stop time" to the application
-    //   the timer manager will close shortly so we cant depend on it
-
-    // dynamically register a broadcast receiver inside sessionactivity
-    // it will trigger after a few seconds and flip some flag
-    // we can then check if that flag is raised once we return to the app
-    // if it is then we can handle the paused case accordingly
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        updater.setTimer(intent.getIntExtra(OLD_TIMER_VAL, 0));
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
         NotificationManager notifMgr = (NotificationManager)this.getSystemService(NOTIFICATION_SERVICE);
 
         assert notifMgr != null;
-
-        Intent startContext = getIntent();
-        TextView timer = findViewById(R.id.timer);
-        timer.setText(updater.getTimerValueAsString());
 
         if (android.os.Build.VERSION.SDK_INT >= 26) {
             notificationChannel = new NotificationChannel(NOTIF_CHANNEL_NAME, NOTIF_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
             notifMgr.createNotificationChannel(notificationChannel);
         }
+    }
 
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        boolean bgRun = savedInstanceState.getBoolean(IS_TIMER_RUNNING);
+        int delta = savedInstanceState.getInt(OLD_TIMER_VAL, 0);
+        if (bgRun) {
+            // restore value from previous state
+            delta += (int)((System.currentTimeMillis() - savedInstanceState.getLong(TIMER_STOP_TIME, System.currentTimeMillis())) / 1000);
+        }
+
+        updater.setTimer(delta);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // if we restored, the timer is set up
+        // if we did not, the timer is sleeping
+        // either way, calling startTimer will be correct.
+
+        // something weird happens after the emulated device turns off/on twice
+        // all of the components are working
+        // it appears to work otherwise but this alone is a problem
         updater.startTimer();
+        Log.e("state", ((Integer)updater.getTimerValue()).toString());
+        ((TextView)findViewById(R.id.timer)).setText(updater.getTimerValueAsString());
+    }
+
+    @Override
+    public void onBackPressed() {
+        updater.stopTimer();
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onPause() {
+
+        super.onPause();
+
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        PowerManager powerMgr = (PowerManager)getSystemService(POWER_SERVICE);
+        assert powerMgr != null;
+
+        outState.putInt(OLD_TIMER_VAL, updater.getTimerValue());
+        outState.putLong(TIMER_STOP_TIME, System.currentTimeMillis());
+        // good stop case
+        if (!powerMgr.isInteractive()) {
+            outState.putBoolean(IS_TIMER_RUNNING, true);
+            Log.e("out", "of here");
+            updater.sleepTimer();
+        } else {
+            outState.putBoolean(IS_TIMER_RUNNING, false);
+            updater.stopTimer();
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        String display = TimerManager.getTimeString(updater.getTimerValue());
-        NotificationManager notifMgr = (NotificationManager)getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
-        updater.stopTimer();
-
-        // note: this is depreciated since API26 -- since our minver is API24 it still works but :/
-        Notification.Builder builder;
-        if (android.os.Build.VERSION.SDK_INT < 26) {
-            builder = new Notification.Builder(getApplicationContext());
-        } else {
-            builder = new Notification.Builder(getApplicationContext(), NOTIF_CHANNEL_NAME);
-        }
-
-        builder.setContentTitle("world of grapes")
-                .setContentText("PAUSED AT " + TimerManager.getTimeString(updater.getTimerValue()))
-                .setSmallIcon(R.drawable.cattron_superscale)
-                .setAutoCancel(true);
-
-        // reopens the main activity
-        Intent reopenSession = new Intent(this, SessionActivity.class);
-        assert reopenSession != null;
-        reopenSession.putExtra("the", "monkey");
-        reopenSession.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        reopenSession.putExtra(OLD_TIMER_VAL, updater.getTimerValue());
-
-        PendingIntent pendSession = PendingIntent.getActivity(this, TIMER_NOTIF_ID, reopenSession, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        builder.setContentIntent(pendSession);
-
-        Log.e("heads up!", "stopped");
-
-        assert notifMgr != null;
-        notifMgr.notify(TIMER_NOTIF_ID, builder.build());
-
-
-
-
     }
-
-    // create an onStop call which displays a notification containing the current timer value
 }
