@@ -21,12 +21,13 @@
         </activity>
         <activity android:name=".session.SessionActivity"
             android:label="SessionStart"
-            android:theme="@style/AppTheme">
+            android:theme="@style/AppTheme"
+            android:launchMode="singleTop">
+            <!-- singleTop ensures that when we open the pause notif that it reopens the same "session"
+                 instead of spawning a new task
+                 the tradeoff is that we override onNewIntent to respond to new incoming intents -->
             <intent-filter>
-                <!-- this will produce a launcher icon for now
-                     but it should be pretty easy to retool such that it's triggered instead -->
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>

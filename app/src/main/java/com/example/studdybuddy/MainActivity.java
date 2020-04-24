@@ -1,8 +1,13 @@
 package com.example.studdybuddy;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.studdybuddy.session.SessionActivity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -11,6 +16,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         // test
         setContentView(R.layout.activity_main);
-        System.out.println("hello world");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    public void sendMessage(View view) {
+        Intent startSession = new Intent(this, SessionActivity.class);
+        startActivity(startSession);
     }
 }

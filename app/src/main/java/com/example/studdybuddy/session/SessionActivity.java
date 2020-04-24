@@ -15,6 +15,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.example.studdybuddy.BuildConfig;
+import com.example.studdybuddy.MainActivity;
 import com.example.studdybuddy.R;
 
 /**
@@ -41,6 +43,8 @@ public class SessionActivity extends AppCompatActivity {
     public static final String OLD_TIMER_VAL = "oldTimerVal";
     public static final String NOTIF_CHANNEL_NAME = "StudyBuddySessions";
 
+    public static final int TIMER_NOTIF_ID = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,15 +52,54 @@ public class SessionActivity extends AppCompatActivity {
         setContentView(R.layout.session_view);
         TextView timer = findViewById(R.id.timer);
         updater = new TimerManager(timer);
+    }
+
+    // todo: the timer notifies us when the back button is pressed to end a session
+    //       only trigger when the app is left
+    //       add'l: account for when the phone is turned off
+    //       and add a broadcast manager which registers at this time
+    //       and fires if the phone is turned back on
+    //       and the app is not opened right away
+    //          - cheat it with a slight delay (a couple seconds)
+    //          - clear it if the app opens before then (onResume)
+    // ticking in the background
+    //    stop immediately for now when the app is left intentionally
+    //    if in the background, save the current time into the bundle
+    //    we can figure out how the app was closed via the power manager
+    //       - back button: do nothing (end the session)
+    //       - home button: notify
+    //       - power button: keep tracking
+    //          - save bundle
+    //          - flip a flag which onRestore can pick up on
+    //          - tell onRestore whether we're still in a session or not
+    //          - the user doesn't have to follow our receiver
+    //          - use the alarm + receiver to communicate a "stop time" to the application
+    //   the timer manager will close shortly so we cant depend on it
+
+    // dynamically register a broadcast receiver inside sessionactivity
+    // it will trigger after a few seconds and flip some flag
+    // we can then check if that flag is raised once we return to the app
+    // if it is then we can handle the paused case accordingly
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        updater.setTimer(intent.getIntExtra(OLD_TIMER_VAL, 0));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        NotificationManager notifMgr = (NotificationManager)this.getSystemService(NOTIFICATION_SERVICE);
+
+        assert notifMgr != null;
 
         Intent startContext = getIntent();
-        updater.setTimer(startContext.getIntExtra(OLD_TIMER_VAL, 0));
+        TextView timer = findViewById(R.id.timer);
         timer.setText(updater.getTimerValueAsString());
 
         if (android.os.Build.VERSION.SDK_INT >= 26) {
             notificationChannel = new NotificationChannel(NOTIF_CHANNEL_NAME, NOTIF_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
-            NotificationManager notifMgr = (NotificationManager)this.getSystemService(NOTIFICATION_SERVICE);
-            assert notifMgr != null;
             notifMgr.createNotificationChannel(notificationChannel);
         }
 
@@ -83,17 +126,21 @@ public class SessionActivity extends AppCompatActivity {
                 .setSmallIcon(R.drawable.cattron_superscale)
                 .setAutoCancel(true);
 
+        // reopens the main activity
         Intent reopenSession = new Intent(this, SessionActivity.class);
+        assert reopenSession != null;
+        reopenSession.putExtra("the", "monkey");
+        reopenSession.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         reopenSession.putExtra(OLD_TIMER_VAL, updater.getTimerValue());
 
-        PendingIntent pendSession = PendingIntent.getActivity(this, 12, reopenSession, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pendSession = PendingIntent.getActivity(this, TIMER_NOTIF_ID, reopenSession, PendingIntent.FLAG_UPDATE_CURRENT);
 
         builder.setContentIntent(pendSession);
 
         Log.e("heads up!", "stopped");
 
         assert notifMgr != null;
-        notifMgr.notify(12, builder.build());
+        notifMgr.notify(TIMER_NOTIF_ID, builder.build());
 
 
 
