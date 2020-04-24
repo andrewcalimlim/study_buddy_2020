@@ -70,6 +70,10 @@ public class TimerManager {
         return isTimerRunning;
     }
 
+    public boolean isTimerSleeping() {
+        return isSleeping;
+    }
+
     public void setTimer(int newValue) {
         secondsPassed.set(newValue);
     }

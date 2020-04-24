@@ -35,8 +35,16 @@ import com.example.studdybuddy.R;
  */
 public class SessionActivity extends AppCompatActivity {
 
+    private enum NotificationType {
+        PAUSE,
+        REMIND,
+        NONE
+    }
+
     private TimerManager updater;
     private NotificationChannel notificationChannel;
+
+    private NotificationType stopSignal;
 
     public static final String OLD_TIMER_VAL = "oldTimerVal";
     public static final String IS_TIMER_RUNNING = "isTimerRunning";
@@ -99,7 +107,6 @@ public class SessionActivity extends AppCompatActivity {
 
     @Override
     protected void onPause() {
-
         super.onPause();
 
     }
@@ -115,16 +122,70 @@ public class SessionActivity extends AppCompatActivity {
         // good stop case
         if (!powerMgr.isInteractive()) {
             outState.putBoolean(IS_TIMER_RUNNING, true);
-            Log.e("out", "of here");
-            updater.sleepTimer();
         } else {
             outState.putBoolean(IS_TIMER_RUNNING, false);
-            updater.stopTimer();
         }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+
+        PowerManager powerMgr = (PowerManager)getSystemService(POWER_SERVICE);
+        assert powerMgr != null;
+        if (!powerMgr.isInteractive()) {
+            Log.e("test", "ouch!");
+            stopSignal = NotificationType.REMIND;
+            updater.sleepTimer();
+        } else if (updater.isTimerRunning()) {
+            stopSignal = NotificationType.PAUSE;
+        } else {
+            stopSignal = NotificationType.NONE;
+        }
+
+        updater.stopTimer();
+        // create pause notification if relevant
+        NotificationManager notifMgr = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        assert notifMgr != null;
+        Notification result;
+        switch (stopSignal) {
+            case PAUSE:
+                result = createPauseNotification();
+                notifMgr.notify(TIMER_NOTIF_ID, result);
+                break;
+            case REMIND:
+                result = createRemindNotification();
+                break;
+            default:
+                result = null;
+                break;
+        }
+
+
+    }
+
+    private Notification createPauseNotification() {
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= 26) {
+            builder = new Notification.Builder(this, NOTIF_CHANNEL_NAME);
+        } else {
+            builder = new Notification.Builder(this);
+        }
+
+        Intent reopenSession = new Intent(this, this.getClass());
+        PendingIntent reopenPending = PendingIntent.getActivity(this, TIMER_NOTIF_ID, reopenSession, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        builder.setContentTitle("SESSION PAUSED")
+                .setContentText(updater.getTimerValueAsString())
+                .setSmallIcon(R.drawable.cattron_superscale)
+                .setContentIntent(reopenPending)
+                .setAutoCancel(true);
+
+        return builder.build();
+
+    }
+
+    private Notification createRemindNotification() {
+        return null;
     }
 }
