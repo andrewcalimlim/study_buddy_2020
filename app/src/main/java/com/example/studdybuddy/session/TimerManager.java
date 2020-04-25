@@ -31,14 +31,11 @@ public class TimerManager {
         runner = new TimerRunner(this.updateManager, this.secondsPassed, this.timer, activity);
 
         this.isTimerRunning = false;
-
-        // todo: make new class for this
-        // todo: also give it a public function for parsing time :)
     }
 
-    public void changeTextView(TextView view) {
-        runner.changeTextView(view);
-    }
+//    public void changeTextView(TextView view) {
+//        runner.changeTextView(view);
+//    }
 
     public void startTimer() {
         if (!isTimerRunning) {
@@ -68,10 +65,6 @@ public class TimerManager {
 
     public boolean isTimerRunning() {
         return isTimerRunning;
-    }
-
-    public boolean isTimerSleeping() {
-        return isSleeping;
     }
 
     public void setTimer(int newValue) {

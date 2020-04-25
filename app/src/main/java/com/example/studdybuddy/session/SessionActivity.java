@@ -117,6 +117,8 @@ public class SessionActivity extends AppCompatActivity {
         PowerManager powerMgr = (PowerManager)getSystemService(POWER_SERVICE);
         assert powerMgr != null;
 
+        // no guarantee whether this will be called before or after onStop due to current target
+        // so I'm just accounting for both cases by doing the work twice
         outState.putInt(OLD_TIMER_VAL, updater.getTimerValue());
         outState.putLong(TIMER_STOP_TIME, System.currentTimeMillis());
         // good stop case
@@ -165,12 +167,7 @@ public class SessionActivity extends AppCompatActivity {
     }
 
     private Notification createPauseNotification() {
-        Notification.Builder builder;
-        if (Build.VERSION.SDK_INT >= 26) {
-            builder = new Notification.Builder(this, NOTIF_CHANNEL_NAME);
-        } else {
-            builder = new Notification.Builder(this);
-        }
+        Notification.Builder builder = getBuilder();
 
         Intent reopenSession = new Intent(this, this.getClass());
         PendingIntent reopenPending = PendingIntent.getActivity(this, TIMER_NOTIF_ID, reopenSession, PendingIntent.FLAG_CANCEL_CURRENT);
@@ -186,6 +183,28 @@ public class SessionActivity extends AppCompatActivity {
     }
 
     private Notification createRemindNotification() {
-        return null;
+        Notification.Builder builder = getBuilder();
+
+        Intent reopenSession = new Intent(this, this.getClass());
+        PendingIntent reopenPending = PendingIntent.getActivity(this, TIMER_NOTIF_ID, reopenSession, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        builder.setContentTitle("RETURN TO SESSION")
+                .setContentText(updater.getTimerValueAsString())
+                .setSmallIcon(R.drawable.cattron_superscale)
+                .setContentIntent(reopenPending)
+                .setAutoCancel(true);
+
+        return builder.build();
+    }
+
+    private Notification.Builder getBuilder() {
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= 26) {
+            builder = new Notification.Builder(this, NOTIF_CHANNEL_NAME);
+        } else {
+            builder = new Notification.Builder(this);
+        }
+
+        return builder;
     }
 }
